@@ -3,6 +3,7 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
+from tqdm import *
 
 def get_spectrum(N, wmin, wmax, total_time):
     
@@ -28,7 +29,7 @@ def get_spectrum(N, wmin, wmax, total_time):
     z = np.zeros((N,N))
     v = np.zeros((N,N))
         
-    for step in range(num_steps):
+    for step in tqdm(range(num_steps)):
         #Increase w and t, set position of the central oscillator
         w += dw
         t += dt
@@ -68,3 +69,15 @@ def get_spectrum(N, wmin, wmax, total_time):
         frequencies.append(w)
         
     return frequencies, displacements
+
+N = 3
+wmin = 0
+wmax = 2
+total_time = 10000
+spectrum = get_spectrum(N, wmin, wmax, total_time)
+plt.plot(spectrum[0], spectrum[1])
+plt.xlim(xmin,xmax)
+plt.xlabel('Frequency')
+plt.ylabel('Zero Plane Displacement')
+plt.title(str(N)+'x'+str(N)' Net Spectrum')
+plt.show()
