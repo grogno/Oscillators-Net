@@ -64,7 +64,7 @@ def get_spectrum(N, wmin, wmax, total_time):
         z[:,-1]=z[:,-2]
         
         #Calculate and write zero plane displacement
-        displacement = np.linalg.norm(z)
+        displacement = np.linalg.norm(z[1:-1,1:-1])
         displacements.append(displacement)
         frequencies.append(w)
         
