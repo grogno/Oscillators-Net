@@ -1,0 +1,95 @@
+import numpy as np
+import  moviepy.editor as mp
+import warnings
+warnings.filterwarnings("ignore")
+
+def get_history(N, w, total_time, lapse):
+    #N must be odd in order to locate the central oscillator
+    if N%2 == 0:
+        raise ValueError('N must be odd')
+    else:
+        N = N+2
+        centre = int((N-1)/2)
+
+    t = 0
+    dt = 0.01 #Somewhat optimal value
+    u = 0.01
+    
+    num_steps = round(total_time/dt)
+    
+    #Empty lists to collect data
+    history = []
+    
+    z = np.zeros((N,N))
+    v = np.zeros((N,N))
+        
+    for step in tqdm(range(num_steps)):
+        #Increase w and t, set position of the central oscillator
+        t += dt
+        z[centre, centre] = np.sin(w*t)
+        
+        #Find estimates of next v and z
+        a = np.roll(z,1,1) + np.roll(z,-1,1) + np.roll(z,1,0) + np.roll(z,-1,0) - 4*z - u*v
+        vE_next = v + a*dt
+        zE_next = z + v*dt
+        
+        #Clean up boundaries and correct position of the central oscillator
+        zE_next[0]=zE_next[1]
+        zE_next[-1]=zE_next[-2]
+        zE_next[:,0]=zE_next[:,1]
+        zE_next[:,-1]=zE_next[:,-2]
+        zE_next[centre, centre] = np.sin(w*(t+dt))
+        
+        #Find next v and z using Heun method        
+        aE_next = (np.roll(zE_next,1,1) + np.roll(zE_next,-1,1) + np.roll(zE_next,1,0) + np.roll(zE_next,-1,0)
+                   - 4*zE_next - u*vE_next)
+        vH_next = v + 0.5*(a+aE_next)*dt
+        zH_next = z + 0.5*(v+vE_next)*dt
+        
+        #Set v and z for the next step
+        v = vH_next
+        z = zH_next
+        
+        #Clean up boundaries
+        z[0]=z[1]
+        z[-1]=z[-2]
+        z[:,0]=z[:,1]
+        z[:,-1]=z[:,-2]
+        
+        if step%lapse==0:
+            history.append(z[1:-1,1:-1])
+        
+    return history
+    
+  def make_frame(second):
+    z = next(history)
+    high = z.clip(min=0)*Colour_intensivity
+    high = np.minimum(high, 255)
+    low = -z.clip(max=0)*Colour_intensivity
+    low = np.minimum(low, 255)
+    red = 255-high
+    green =255-high-low
+    blue = 255-low
+    
+    col = np.array([red, green, blue])
+    col = col.swapaxes(0,2)
+    
+    col = np.repeat(col, Pixels_on_oscillator, 0)
+    col = np.repeat(col, Pixels_on_oscillator, 1)
+ 
+    return col
+    
+#Paramters for visualisation:
+N = 3 #Size of the plate, NxN
+w = 1 #Frequency
+lapse = 10 #Number of simulation steps between frames
+duration = 60 #Video Duration
+fps = 50  #Video FPS
+Colour_intensivity = 1 #Influences of colour intensivity
+Pixels_on_oscillator = 40 #Width and Height of one oscllator in pixels
+Video_name = 'Video' #Video file name
+
+
+history = iter(get_history(N, w, duration*fps*lapse, lapse))
+animation = mp.VideoClip(make_frame, duration=duration)
+animation.write_videofile(Video_name, fps=fps, codec='png')
