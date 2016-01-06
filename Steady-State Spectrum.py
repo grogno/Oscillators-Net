@@ -88,7 +88,7 @@ def get_precise_spectrum_in_parallel(N, wmin, wmax, dw):
     
     points = np.arange(wmin, wmax+dw, dw)
     func = lambda w: get_steady_state_max_zpd(N, w)
-    spectrum = dview.map(func, [float(w) for w in points])
+    spectrum = dview.map(func, [float(w) for w in tqdm(points]))
     
     return points, spectrum.get()
     
