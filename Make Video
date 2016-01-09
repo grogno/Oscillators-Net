@@ -1,30 +1,16 @@
 import numpy as np
-import  moviepy.editor as mp
-import warnings
-warnings.filterwarnings("ignore")
+import matplotlib.pyplot as plt
+import moviepy.editor as mp
 
-def get_history(N, w, total_time, lapse):
-    #N must be odd in order to locate the central oscillator
-    if N%2 == 0:
-        raise ValueError('N must be odd')
-    else:
-        N = N+2
-        centre = int((N-1)/2)
+def get_z_frame():
+    global lapse, w, u, dt, t, z, v
+    centre = -2 
 
-    t = 0
-    dt = 0.01 #Somewhat optimal value
-    u = 0.01
-    
-    num_steps = round(total_time/dt)
-    
-    #Empty lists to collect data
-    history = []
-    
-    z = np.zeros((N,N))
-    v = np.zeros((N,N))
-        
-    for step in tqdm(range(num_steps)):
+    step = 0
+                      
+    while step*dt <= lapse:
         #Increase w and t, set position of the central oscillator
+        step += 1
         t += dt
         z[centre, centre] = np.sin(w*t)
         
@@ -35,9 +21,9 @@ def get_history(N, w, total_time, lapse):
         
         #Clean up boundaries and correct position of the central oscillator
         zE_next[0]=zE_next[1]
-        zE_next[-1]=zE_next[-2]
+        zE_next[-1]=zE_next[:,-3]
         zE_next[:,0]=zE_next[:,1]
-        zE_next[:,-1]=zE_next[:,-2]
+        zE_next[:,-1]=zE_next[-3]
         zE_next[centre, centre] = np.sin(w*(t+dt))
         
         #Find next v and z using Heun method        
@@ -52,20 +38,24 @@ def get_history(N, w, total_time, lapse):
         
         #Clean up boundaries
         z[0]=z[1]
-        z[-1]=z[-2]
+        z[-1]=z[:,-3]
         z[:,0]=z[:,1]
-        z[:,-1]=z[:,-2]
+        z[:,-1]=z[-3]
         
-        if step%lapse==0:
-            history.append(z[1:-1,1:-1])
-        
-    return history
+    step = 0
     
-  def make_frame(second):
-    z = next(history)
-    high = z.clip(min=0)*Colour_intensivity
+    z_frame = z[1:-1,1:-1]
+    z_frame = np.append(z_frame, np.fliplr(z_frame)[:,1:], axis=1)
+    z_frame = np.append(z_frame, np.flipud(z_frame)[1:], axis=0)
+    
+    return z_frame
+
+def make_frame(second):
+    z_frame = get_z_frame()
+    intensifier = max(255, np.max(z_frame))*colour_intensifier
+    high = z_frame.clip(min=0)*intensifier
     high = np.minimum(high, 255)
-    low = -z.clip(max=0)*Colour_intensivity
+    low = -z_frame.clip(max=0)*intensifier
     low = np.minimum(low, 255)
     red = 255-high
     green =255-high-low
@@ -73,23 +63,32 @@ def get_history(N, w, total_time, lapse):
     
     col = np.array([red, green, blue])
     col = col.swapaxes(0,2)
-    
-    col = np.repeat(col, Pixels_on_oscillator, 0)
-    col = np.repeat(col, Pixels_on_oscillator, 1)
+
+    tile_size = int(500/N)
+    col = np.repeat(col, tile_size, 0)
+    col = np.repeat(col, tile_size, 1)
  
     return col
-    
-#Paramters for visualisation:
-N = 3 #Size of the plate, NxN
-w = 1 #Frequency
-lapse = 10 #Number of simulation steps between frames
-duration = 60 #Video Duration
-fps = 50  #Video FPS
-Colour_intensivity = 1 #Influences of colour intensivity
-Pixels_on_oscillator = 40 #Width and Height of one oscllator in pixels
-Video_name = 'Video' #Video file name
 
+###############################################################
 
-history = iter(get_history(N, w, duration*fps*lapse, lapse))
+N = 20 #Size of the plate, NxN oscillators
+lapse = 1 #Simulaton time at which a frame is made
+dt = 0.01 #Time-step
+w = 0.1 #Oscillation frequency of the central oscillator
+u = 0.01 #Viscous friction
+
+fps = 50 #Video FPS
+duration = 10 #Video duration in seconds
+colour_intensifier = 0.5 #Controls colour intensity
+file_name = '{0}x{0} at {1}'.format(N, w)
+
+###############################################################
+
+N = int(N/2)+3
+z = np.zeros((N,N))
+v = np.zeros((N,N))
+t = 0
+
 animation = mp.VideoClip(make_frame, duration=duration)
-animation.write_videofile(Video_name, fps=fps, codec='png')
+animation.write_videofile(file_name+'.avi', fps=fps, codec='png')
