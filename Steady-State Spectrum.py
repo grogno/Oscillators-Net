@@ -3,27 +3,22 @@ import matplotlib.pyplot as plt
 from tqdm import *
 
 def get_steady_state_max_zpd(N, w):
-    if N%2 == 0:
-        raise ValueError('N must be odd')
-    else:
-        N = N+2
-        centre = int((N-1)/2)
+    N = int(N/2)+3
+    centre = -2 
 
     u = 0.01 
-    step = 0
     t = 0
-    dt = 0.001 #Somewhat optimal value
-    
-    #Calculate number of step for one revolution 
+    dt = 0.01 #Somewhat optimal value
+    step = 0
+       
     revolution_time = 2*np.pi/w
     revolution_steps = int(revolution_time/dt)
     
     #Variables to collect data
-    zpds_during_last_revolution = []
+    last_revolution_shift = []
     estimates = [0, 0, 0]
     reached_steady_state = False
     
-    #Initiate matrices
     z = np.zeros((N,N))
     v = np.zeros((N,N))
             
@@ -40,9 +35,9 @@ def get_steady_state_max_zpd(N, w):
         
         #Clean up boundaries and correct position of the central oscillator
         zE_next[0]=zE_next[1]
-        zE_next[-1]=zE_next[-2]
+        zE_next[-1]=zE_next[:,-3]
         zE_next[:,0]=zE_next[:,1]
-        zE_next[:,-1]=zE_next[:,-2]
+        zE_next[:,-1]=zE_next[-3]
         zE_next[centre, centre] = np.sin(w*(t+dt))
         
         #Find next v and z using Heun method        
@@ -57,23 +52,21 @@ def get_steady_state_max_zpd(N, w):
         
         #Clean up boundaries
         z[0]=z[1]
-        z[-1]=z[-2]
+        z[-1]=z[:,-3]
         z[:,0]=z[:,1]
-        z[:,-1]=z[:,-2]
+        z[:,-1]=z[-3]
         
         #Calculate and write zero plane displacement
-        zpd = np.linalg.norm(z[1:-1,1:-1])
-        zpds_during_last_revolution.append(zpd)
-        
-        #Analyses after one revolution
+        shift = np.mean(z[1:-1,1:-1]**2)/(N-2)**2
+        last_revolution_shift.append(shift)
+                  
         if step%revolution_steps == 0:
-            estimates = [estimates[1], estimates[2], max(zpds_during_last_revolution)]
-            zpds_during_last_revolution = []   
+            estimates = [estimates[1], estimates[2], max(last_revolution_shift)]
+            last_revolution_shift = []   
             if np.std(estimates)/np.mean(estimates) < 0.001:
-                reached_steady_state = True                
-            print(t, estimates[2])
-        
-    return estimates[-1]
+                reached_steady_state = True
+                
+    return np.mean(estimates)
     
 def get_precise_spectrum_in_parallel(N, wmin, wmax, dw):
     from ipyparallel import Client
@@ -95,7 +88,8 @@ def get_precise_spectrum_in_parallel(N, wmin, wmax, dw):
 def get_precise_spectrum(N, wmin, wmax, dw):
     if wmin == 0:
         wmin += dw
-    
+        
+    func = lambda w: get_steady_state_max_zpd(N, w)
     points = np.arange(wmin, wmax+dw, dw)
     spectrum = [func(w) for w in tqdm(points)]
     
@@ -104,11 +98,11 @@ def get_precise_spectrum(N, wmin, wmax, dw):
 N = 3
 wmin = 0
 wmax = 4
-dw = 0.02
+dw = 1
 spectrum = get_precise_spectrum(N, wmin, wmax, dw)
 
-plt.plot(spectrum)
-plt.title('{}x{} Steady-State Spectrum'.format(N,N)')
+plt.plot(spectrum[0], spectrum[1])
+plt.title('{}x{} Steady-State Spectrum'.format(N,N))
 plt.xlabel('Frequency')
-plt.ylabel('Steady-State max ZPD')
+plt.ylabel('Steady-State Max Shift')
 plt.show()
