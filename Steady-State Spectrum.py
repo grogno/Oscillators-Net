@@ -94,12 +94,15 @@ def get_precise_spectrum(N, wmin, wmax, dw):
     spectrum = [func(w) for w in tqdm(points)]
     
     return points, spectrum
-    
+
+#INPUT VALUES    
 N = 3
 wmin = 0
 wmax = 4
-dw = 1
+dw = 0.1
+
 spectrum = get_precise_spectrum(N, wmin, wmax, dw)
+#spectrum = get_precise_spectrum_in_parallel(N, wmin, wmax, dw) #Use that line instead of the previous for parallel computing
 
 plt.plot(spectrum[0], spectrum[1])
 plt.title('{}x{} Steady-State Spectrum'.format(N,N))
