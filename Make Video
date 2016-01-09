@@ -52,7 +52,7 @@ def get_z_frame():
 
 def make_frame(second):
     z_frame = get_z_frame()
-    intensifier = min(255, 255/np.max(z_frame))*colour_intensifier
+    intensifier = min(255, 255/np.max(np.abs(z_frame)))*colour_intensifier
     high = z_frame.clip(min=0)*intensifier
     high = np.minimum(high, 255)
     low = -z_frame.clip(max=0)*intensifier
