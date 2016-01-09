@@ -1,21 +1,18 @@
-
-# coding: utf-8
-
 import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import *
 
-def get_spectrum(N, wmin, wmax, total_time):
+def get_time_evolution(N, wmin, wmax, total_time):
     
     #N must be odd in order to locate the central oscillator
     if N%2 == 0:
         raise ValueError('N must be odd')
     else:
-        N = N+2
-        centre = int((N-1)/2)
+        N = int(N/2)+3
+        centre = -2 
 
     t = 0
-    dt = 0.001 #Somewhat optimal value
+    dt = 0.01 #Somewhat optimal value
     w = wmin
     dw = (wmax-wmin)/total_time*dt
     u = 0.01
@@ -24,7 +21,7 @@ def get_spectrum(N, wmin, wmax, total_time):
     
     #Empty lists to collect data
     frequencies = []
-    displacements = []
+    shifts = []
     
     z = np.zeros((N,N))
     v = np.zeros((N,N))
@@ -42,9 +39,9 @@ def get_spectrum(N, wmin, wmax, total_time):
         
         #Clean up boundaries and correct position of the central oscillator
         zE_next[0]=zE_next[1]
-        zE_next[-1]=zE_next[-2]
+        zE_next[-1]=zE_next[:,-3]
         zE_next[:,0]=zE_next[:,1]
-        zE_next[:,-1]=zE_next[:,-2]
+        zE_next[:,-1]=zE_next[-3]
         zE_next[centre, centre] = np.sin(w*(t+dt))
         
         #Find next v and z using Heun method        
@@ -59,25 +56,27 @@ def get_spectrum(N, wmin, wmax, total_time):
         
         #Clean up boundaries
         z[0]=z[1]
-        z[-1]=z[-2]
+        z[-1]=z[:,-3]
         z[:,0]=z[:,1]
-        z[:,-1]=z[:,-2]
+        z[:,-1]=z[-3]
         
         #Calculate and write zero plane displacement
-        displacement = np.linalg.norm(z[1:-1,1:-1])
-        displacements.append(displacement)
+        shift = np.mean(z[1:-1,1:-1]**2)/(N-2)**2
+        shifts.append(shift)
         frequencies.append(w)
         
-    return frequencies, displacements
+    return frequencies, shifts
 
+#Input Values
 N = 3
 wmin = 0
 wmax = 2
-total_time = 10000
-spectrum = get_spectrum(N, wmin, wmax, total_time)
-plt.plot(spectrum[0], spectrum[1])
-plt.xlim(xmin,xmax)
+total_time = 10
+
+time_evolution = get_time_evolution(N, wmin, wmax, total_time)
+plt.plot(time_evolution[0], time_evolution[1])
+plt.xlim(wmin,wmax)
 plt.xlabel('Frequency')
-plt.ylabel('Zero Plane Displacement')
-plt.title(str(N)+'x'+str(N)' Net Spectrum')
+plt.ylabel('Mean Squared Shift')
+plt.title('{0}x{0} Plate Time Evolution\nw: from {1} to {2}'.format(N, wmin, wmax))
 plt.show()
